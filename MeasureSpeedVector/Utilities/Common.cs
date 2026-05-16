@@ -34,16 +34,16 @@ namespace MeasureSpeedVertor.Utilities
         }
 
         public static void Print3DPoints(
-            List<(double X, double Y, double Z)> points)
+            List<BallDetection> detections)
         {
             PrintSection("3D Coordinates");
 
             int index = 0;
 
-            foreach (var p in points)
+            foreach (var p in detections)
             {
                 Console.WriteLine(
-                    $"[{index}] " +
+                    $"[{p.FrameName}] " +
                     $"X={p.X:F3}, " +
                     $"Y={p.Y:F3}, " +
                     $"Z={p.Z:F3}");

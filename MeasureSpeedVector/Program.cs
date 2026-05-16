@@ -36,11 +36,11 @@ namespace MeasureSpeedVector
             Common.PrintSection("After Z Computation");
             Common.PrintDetections(detections);
 
-            var points3D = ConvertTo3D(detections);
+            ConvertTo3D(detections);
 
-            Common.Print3DPoints(points3D);
+            Common.Print3DPoints(detections);
 
-            ComputeVelocity(points3D);
+            ComputeVelocity(detections);
 
             Cv2.DestroyAllWindows();
         }
@@ -51,10 +51,7 @@ namespace MeasureSpeedVector
 
         static List<BallDetection> ProcessFrames(string folderPath)
         {
-            var files = Directory
-                .GetFiles(folderPath)
-                .OrderBy(x => x)
-                .ToArray();
+            var files = Directory.GetFiles(folderPath).OrderBy(x => x).ToArray();
 
             var results = new List<BallDetection>();
 
@@ -78,8 +75,7 @@ namespace MeasureSpeedVector
                     continue;
                 }
 
-                BallDetection detection =
-                    DetectBall(frame, gray, previousGray, fileName);
+                BallDetection detection = DetectBall(frame, gray, previousGray, fileName);
 
                 results.Add(detection);
 
@@ -190,7 +186,6 @@ namespace MeasureSpeedVector
             Cv2.NamedWindow("Ball Detection", WindowFlags.KeepRatio);
             Cv2.ResizeWindow("Ball Detection", new Size(480, 680));
             Cv2.ImShow("Ball Detection", image);
-
             Cv2.WaitKey(1);
         }
 
@@ -270,8 +265,7 @@ namespace MeasureSpeedVector
         // Pixel -> 3D
         // =========================
 
-        static List<(double X, double Y, double Z)>
-            ConvertTo3D(List<BallDetection> detections)
+        static void ConvertTo3D(List<BallDetection> detections)
         {
             var points =
                 new List<(double, double, double)>();
@@ -281,25 +275,23 @@ namespace MeasureSpeedVector
                 if (!d.IsValid || d.Z == null)
                     continue;
 
-                double X = (d.X.Value - CameraConfig.Cx) * CameraConfig.PixelSize * d.Z.Value / CameraConfig.FocalLength;
+                d.X = (d.X.Value - CameraConfig.Cx) * CameraConfig.PixelSize * d.Z.Value / CameraConfig.FocalLength;
 
-                double Y = (d.Y.Value - CameraConfig.Cy) * CameraConfig.PixelSize * d.Z.Value / CameraConfig.FocalLength;
+                d.Y = (d.Y.Value - CameraConfig.Cy) * CameraConfig.PixelSize * d.Z.Value / CameraConfig.FocalLength;
 
-                double Z = d.Z.Value;
+                d.Z = d.Z.Value;
 
-                points.Add((X, Y, Z));
+
             }
-
-            return points;
         }
 
         // =========================
         // Velocity
         // =========================
 
-        static void ComputeVelocity(List<(double X, double Y, double Z)> points)
+        static void ComputeVelocity(List<BallDetection> detections)
         {
-            if (points.Count < 2)
+            if (detections.Count(x => x.IsValid == true) < 2)
             {
                 Console.WriteLine(
                     "Not enough points.");
@@ -308,16 +300,17 @@ namespace MeasureSpeedVector
 
             double dt = 1.0 / CameraConfig.FPS;
 
-            var first = points.First();
-            var last = points.Last();
+            List<BallDetection> validBallDetections = detections.Where(x => x.IsValid).ToList();
+            var first = validBallDetections.First();
+            var last = validBallDetections.Last();
 
-            double totalTime = dt * (points.Count - 1);
+            double totalTime = dt * (validBallDetections.Count - 1);
 
-            double vx = (last.X - first.X) / totalTime;
+            double vx = (double)(last.X - first.X) / totalTime;
 
-            double vy = (last.Y - first.Y) / totalTime;
+            double vy = (double)(last.Y - first.Y) / totalTime;
 
-            double vz = (last.Z - first.Z) / totalTime;
+            double vz = (double)(last.Z - first.Z) / totalTime;
 
             // pitch correction
             double theta = Common.Deg2Rad(CameraConfig.TiltDeg);
